@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using ForeignExchange.Api.Logging;
 using ForeignExchange.Api.Models;
 using ForeignExchange.Api.Repositories;
@@ -16,7 +17,7 @@ public class QuoteService : IQuoteService
         _ratesRepository = ratesRepository;
         _logger = logger;
     }
-
+    
     public async Task<ConversionQuote?> GetQuoteAsync(
         string fromCurrency, string toCurrency, decimal amount)
     {
