@@ -19,16 +19,18 @@ public class QuoteServiceTests
   }
 
   [Theory, AutoMoqData]
-  public async Task GetQuote_DoStuff(QuoteService sut)
+  public void GetQuote_DoStuff(QuoteService sut)
   {
     //Actors
 
 
     //Acts
-    var actual = await sut.GetQuoteAsync("USD", "GBP", 9);
+    //var actual = await sut.GetQuoteAsync("USD", "GBP", 9);
 
     //Asserts
-    actual.Should().Be(9);
+    //actual.Should().Be(9);
+
+    sut.Invoking(async _ => await sut.GetQuoteAsync("USD", "GBP", 9)).Should().ThrowAsync<Exception>();
   }
 }
 
