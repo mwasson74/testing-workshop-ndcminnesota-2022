@@ -5,4 +5,11 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="$(AssemblyName).Tests.Unit"/>
+        <InternalsVisibleTo Include="$(AssemblyName).Tests.Integration"/>
+        <InternalsVisibleTo Include="$(AssemblyName).Tests.Functional"/>
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2"/>
+    </ItemGroup>
 </Project>
