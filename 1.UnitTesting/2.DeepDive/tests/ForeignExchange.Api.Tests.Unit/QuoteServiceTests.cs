@@ -5,6 +5,7 @@ using ForeignExchange.Api.Repositories;
 using ForeignExchange.Api.Services;
 using ForeignExchange.Api.Validation;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
 using Xunit;
 
