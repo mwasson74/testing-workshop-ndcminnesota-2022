@@ -7,6 +7,8 @@
     private readonly IClientRepository _clientRepo;
     private readonly IUserCreditService _serviceClient;
 
+    public UserService() { }
+
     public UserService(IClientRepository clientRepo, IUserCreditService serviceClient)
     {
       _clientRepo = clientRepo;
