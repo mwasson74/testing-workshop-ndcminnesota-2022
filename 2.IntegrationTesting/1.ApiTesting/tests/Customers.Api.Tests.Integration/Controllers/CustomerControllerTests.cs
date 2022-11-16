@@ -3,23 +3,20 @@ using Customers.Api.Contracts.Requests;
 using Customers.Api.Contracts.Responses;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Xunit;
 
 namespace Customers.Api.Tests.Integration.Controllers;
 
+[Collection("Shared collection")]
 public class CustomerControllerTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
-    private readonly WebApplicationFactory<IApiMarker> _waf = new();
-    private readonly List<Guid> _idsToDelete = new();
+    private readonly Func<Task> _resetDb;
 
-    public CustomerControllerTests()
+    public CustomerControllerTests(CustomerApiFactory waf)
     {
-        _client = _waf.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            BaseAddress = new Uri("https://localhost:5001")
-        });
+        _client = waf.HttpClient;
+        _resetDb = waf.ResetDatabaseAsync;
     }
 
     [Fact]
@@ -39,11 +36,9 @@ public class CustomerControllerTests : IAsyncLifetime
         
         // Assert
         var customerResponse = await response.Content.ReadFromJsonAsync<CustomerResponse>();
-        _idsToDelete.Add(customerResponse!.Id);
-        
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         customerResponse.Should().BeEquivalentTo(request);
-        response.Headers.Location.Should().Be($"https://localhost:5001/customers/{customerResponse!.Id}");
+        response.Headers.Location.Should().Be($"http://localhost/customers/{customerResponse!.Id}");
     }
 
     [Fact]
@@ -59,10 +54,9 @@ public class CustomerControllerTests : IAsyncLifetime
         };
         var createResponse = await _client.PostAsJsonAsync("customers", request);
         var customerResponse = await createResponse.Content.ReadFromJsonAsync<CustomerResponse>();
-        _idsToDelete.Add(customerResponse!.Id);
-        
+
         // Act
-        var response = await _client.GetAsync($"customers/{customerResponse.Id}");
+        var response = await _client.GetAsync($"customers/{customerResponse!.Id}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -106,7 +100,6 @@ public class CustomerControllerTests : IAsyncLifetime
     
         var createCustomerHttpResponse = await _client.PostAsJsonAsync("customers", request);
         var createdCustomer = await createCustomerHttpResponse.Content.ReadFromJsonAsync<CustomerResponse>();
-        _idsToDelete.Add(createdCustomer!.Id);
 
         // Act
         var response = await _client.GetAsync("customers");
@@ -144,8 +137,7 @@ public class CustomerControllerTests : IAsyncLifetime
     
         var createCustomerHttpResponse = await _client.PostAsJsonAsync("customers", createRequest);
         var createdCustomer = await createCustomerHttpResponse.Content.ReadFromJsonAsync<CustomerResponse>();
-        _idsToDelete.Add(createdCustomer!.Id);
-    
+
         var updateRequest = new CustomerRequest
         {
             Email = "chapsas@nick.com",
@@ -202,9 +194,6 @@ public class CustomerControllerTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        foreach (var idToDelete in _idsToDelete)
-        {
-            await _client.DeleteAsync($"customers/{idToDelete}");
-        }
+        await _resetDb();
     }
 }
