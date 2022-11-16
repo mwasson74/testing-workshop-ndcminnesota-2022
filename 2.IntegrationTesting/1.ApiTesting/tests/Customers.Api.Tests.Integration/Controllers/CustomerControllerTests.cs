@@ -1,4 +1,5 @@
 using System.Net;
+using Bogus;
 using Customers.Api.Contracts.Requests;
 using Customers.Api.Contracts.Responses;
 using FluentAssertions;
@@ -12,24 +13,27 @@ public class CustomerControllerTests : IAsyncLifetime
 {
     private readonly HttpClient _client;
     private readonly Func<Task> _resetDb;
+    private readonly GitHubApiServer _gitHubApiServer;
+    private readonly Faker<CustomerRequest> _customerGenerator = 
+        new Faker<CustomerRequest>()
+            .RuleFor(x => x.Email, f => f.Person.Email)
+            .RuleFor(x => x.FullName, f => f.Person.FullName)
+            .RuleFor(x => x.DateOfBirth, f => f.Person.DateOfBirth.Date)
+            .RuleFor(x => x.GitHubUsername, f => f.Person.UserName.Replace(".", "").Replace("-", "").Replace("_", ""));
 
     public CustomerControllerTests(CustomerApiFactory waf)
     {
         _client = waf.HttpClient;
         _resetDb = waf.ResetDatabaseAsync;
+        _gitHubApiServer = waf.GitHubApiServer;
     }
 
     [Fact]
     public async Task Create_ShouldCreateCustomer_WhenDetailsAreValid()
     {
         // Arrange
-        var request = new CustomerRequest
-        {
-            Email = "nick@chapsas.com",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var request = _customerGenerator.Generate();
+        _gitHubApiServer.SetupUser(request.GitHubUsername);
 
         // Act
         var response = await _client.PostAsJsonAsync("customers", request);
@@ -45,13 +49,8 @@ public class CustomerControllerTests : IAsyncLifetime
     public async Task Get_ShouldReturnCustomer_WhenCustomerExists()
     {
         // Arrange
-        var request = new CustomerRequest
-        {
-            Email = "nick@chapsas.com",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var request = _customerGenerator.Generate();
+        _gitHubApiServer.SetupUser(request.GitHubUsername);
         var createResponse = await _client.PostAsJsonAsync("customers", request);
         var customerResponse = await createResponse.Content.ReadFromJsonAsync<CustomerResponse>();
 
@@ -68,13 +67,10 @@ public class CustomerControllerTests : IAsyncLifetime
     public async Task Create_ShouldReturnBadRequest_WhenTheEmailIsInvalid()
     {
         // Arrange
-        var request = new CustomerRequest
-        {
-            Email = "nick",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var request = _customerGenerator.Clone()
+            .RuleFor(x => x.Email, () => "bademail")
+            .Generate();
+        _gitHubApiServer.SetupUser(request.GitHubUsername);
 
         // Act
         var response = await _client.PostAsJsonAsync("customers", request);
@@ -83,20 +79,15 @@ public class CustomerControllerTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var problemDetails = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        problemDetails!.Errors["Email"].Should().Equal("nick is not a valid email address");
+        problemDetails!.Errors["Email"].Should().Equal($"{request.Email} is not a valid email address");
     }
     
     [Fact]
     public async Task GetAll_ShouldReturnAllCustomers_WhenCustomersExist()
     {
         // Arrange
-        var request = new CustomerRequest
-        {
-            Email = "nick@chapsas.com",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var request = _customerGenerator.Generate();
+        _gitHubApiServer.SetupUser(request.GitHubUsername);
     
         var createCustomerHttpResponse = await _client.PostAsJsonAsync("customers", request);
         var createdCustomer = await createCustomerHttpResponse.Content.ReadFromJsonAsync<CustomerResponse>();
@@ -127,24 +118,14 @@ public class CustomerControllerTests : IAsyncLifetime
     public async Task Update_ShouldUpdateCustomerDetails_WhenDetailsAreValid()
     {
         // Arrange
-        var createRequest = new CustomerRequest
-        {
-            Email = "nick@chapsas.com",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var createRequest = _customerGenerator.Generate();
+        _gitHubApiServer.SetupUser(createRequest.GitHubUsername);
     
         var createCustomerHttpResponse = await _client.PostAsJsonAsync("customers", createRequest);
         var createdCustomer = await createCustomerHttpResponse.Content.ReadFromJsonAsync<CustomerResponse>();
 
-        var updateRequest = new CustomerRequest
-        {
-            Email = "chapsas@nick.com",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var updateRequest = _customerGenerator.Generate();
+        _gitHubApiServer.SetupUser(updateRequest.GitHubUsername);
 
         // Act
         var response = await _client.PutAsJsonAsync($"customers/{createdCustomer!.Id}", updateRequest);
@@ -159,15 +140,10 @@ public class CustomerControllerTests : IAsyncLifetime
     public async Task Delete_ShouldDeleteCustomer_WhenCustomerExists()
     {
         // Arrange
-        var createRequest = new CustomerRequest
-        {
-            Email = "nick@chapsas.com",
-            FullName = "Nick Chapsas",
-            DateOfBirth = new DateTime(1993, 01, 01),
-            GitHubUsername = "nickchapsas"
-        };
+        var request = _customerGenerator.Generate();
+        _gitHubApiServer.SetupUser(request.GitHubUsername);
     
-        var createCustomerHttpResponse = await _client.PostAsJsonAsync("customers", createRequest);
+        var createCustomerHttpResponse = await _client.PostAsJsonAsync("customers", request);
         var createdCustomer = await createCustomerHttpResponse.Content.ReadFromJsonAsync<CustomerResponse>();
 
         // Act
