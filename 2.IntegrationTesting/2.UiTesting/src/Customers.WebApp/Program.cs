@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     Args = args,
     ContentRootPath = Directory.GetCurrentDirectory()
 });
+
 var config = builder.Configuration;
 config.AddEnvironmentVariables("CustomersWebApp_");
 
